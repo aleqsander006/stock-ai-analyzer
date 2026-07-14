@@ -14,6 +14,6 @@ if st.button("ანალიზი"):
         price = data["Close"].iloc[-1]
 
         st.write("აქცია:", ticker)
-        st.write("ბოლო ფასი:", float(price))
+        st.write("ბოლო ფასი:", price)
 
         st.line_chart(data["Close"])
