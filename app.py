@@ -18,6 +18,7 @@ if st.button("ანალიზი"):
         st.write("ბოლო ფასი:", float(price))
 
         score = 0
+        reasons = []
 
         # MA
         ma20 = close.rolling(20).mean().iloc[-1]
@@ -25,9 +26,14 @@ if st.button("ანალიზი"):
 
         if ma20 > ma50:
             score += 1
+            reasons.append("✅ ტენდენცია დადებითია")
+        else:
+            score -= 1
+            reasons.append("⚠️ ტენდენცია სუსტია")
 
         # RSI
         delta = close.diff()
+
         gain = delta.clip(lower=0)
         loss = -delta.clip(upper=0)
 
@@ -39,10 +45,16 @@ if st.button("ანალიზი"):
 
         current_rsi = rsi.iloc[-1]
 
+        st.write("RSI:", round(float(current_rsi), 2))
+
         if current_rsi < 30:
             score += 1
+            reasons.append("✅ RSI დაბალია — შესაძლო აღდგენა")
         elif current_rsi > 70:
             score -= 1
+            reasons.append("⚠️ RSI მაღალია — შესაძლებელია გადახურება")
+        else:
+            reasons.append("ℹ️ RSI ნეიტრალურია")
 
         # MACD
         ema12 = close.ewm(span=12).mean()
@@ -53,35 +65,50 @@ if st.button("ანალიზი"):
 
         if macd.iloc[-1] > signal.iloc[-1]:
             score += 1
+            reasons.append("✅ MACD დადებითია")
+        else:
+            score -= 1
+            reasons.append("⚠️ MACD სუსტია")
 
         # საბოლოო შეფასება
         st.subheader("🤖 საბოლოო შეფასება")
 
         if score >= 2:
             st.success("🟢 BUY")
-        elif score <= -1:
+        elif score <= -2:
             st.error("🔴 SELL")
         else:
             st.warning("🟡 HOLD")
 
         st.write("ქულა:", score, "/ 3")
 
-        # ხვალინდელი ალბათობა
-        st.subheader("📅 ხვალინდელი სავარაუდო მიმართულება")
+        # Confidence
+        confidence = ((score + 3) / 6) * 100
+
+        st.subheader("🎯 AI Confidence")
+        st.write("ნდობის დონე:", round(confidence, 1), "%")
+
+        st.write("ანალიზის მიზეზები:")
+        for reason in reasons:
+            st.write(reason)
+
+        # ისტორიული ზრდის შანსი
+        st.subheader("📅 ისტორიული მიმართულება")
 
         returns = close.pct_change().dropna()
 
-        positive_days = (returns > 0).sum()
+        up_days = (returns > 0).sum()
         total_days = len(returns)
 
-        probability = (positive_days / total_days) * 100
+        up_probability = (up_days / total_days) * 100
 
         st.write("📈 ზრდის ისტორიული შანსი:",
-                 round(probability, 2), "%")
+                 round(up_probability, 2), "%")
 
         st.write("📉 ვარდნის ისტორიული შანსი:",
-                 round(100 - probability, 2), "%")
+                 round(100 - up_probability, 2), "%")
 
+        # გრაფიკი
         chart = close.to_frame(name="Close")
         chart["MA20"] = close.rolling(20).mean()
         chart["MA50"] = close.rolling(50).mean()
