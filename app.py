@@ -19,16 +19,12 @@ if st.button("ანალიზი"):
 
         score = 0
 
-        # MA20 / MA50
+        # MA
         ma20 = close.rolling(20).mean().iloc[-1]
         ma50 = close.rolling(50).mean().iloc[-1]
 
         if ma20 > ma50:
             score += 1
-            st.write("✅ ტენდენცია დადებითია")
-        else:
-            score -= 1
-            st.write("⚠️ ტენდენცია სუსტია")
 
         # RSI
         delta = close.diff()
@@ -43,16 +39,10 @@ if st.button("ანალიზი"):
 
         current_rsi = rsi.iloc[-1]
 
-        st.write("RSI:", round(float(current_rsi), 2))
-
         if current_rsi < 30:
             score += 1
-            st.write("✅ RSI დაბალია")
         elif current_rsi > 70:
             score -= 1
-            st.write("⚠️ RSI მაღალია")
-        else:
-            st.write("ℹ️ RSI ნეიტრალურია")
 
         # MACD
         ema12 = close.ewm(span=12).mean()
@@ -63,22 +53,34 @@ if st.button("ანალიზი"):
 
         if macd.iloc[-1] > signal.iloc[-1]:
             score += 1
-            st.write("✅ MACD დადებითია")
-        else:
-            score -= 1
-            st.write("⚠️ MACD სუსტია")
 
         # საბოლოო შეფასება
         st.subheader("🤖 საბოლოო შეფასება")
 
-        st.write("ქულა:", score, "/ 3")
-
         if score >= 2:
             st.success("🟢 BUY")
-        elif score <= -2:
+        elif score <= -1:
             st.error("🔴 SELL")
         else:
             st.warning("🟡 HOLD")
+
+        st.write("ქულა:", score, "/ 3")
+
+        # ხვალინდელი ალბათობა
+        st.subheader("📅 ხვალინდელი სავარაუდო მიმართულება")
+
+        returns = close.pct_change().dropna()
+
+        positive_days = (returns > 0).sum()
+        total_days = len(returns)
+
+        probability = (positive_days / total_days) * 100
+
+        st.write("📈 ზრდის ისტორიული შანსი:",
+                 round(probability, 2), "%")
+
+        st.write("📉 ვარდნის ისტორიული შანსი:",
+                 round(100 - probability, 2), "%")
 
         chart = close.to_frame(name="Close")
         chart["MA20"] = close.rolling(20).mean()
