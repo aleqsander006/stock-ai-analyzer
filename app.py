@@ -1,21 +1,26 @@
 import streamlit as st
 import yfinance as yf
 
+st.set_page_config(
+    page_title="Stock AI Analyzer",
+    page_icon="📈",
+    layout="wide"
+)
+
 st.title("📈 Stock AI Analyzer")
 
-ticker = st.text_input("შეიყვანე აქციის სიმბოლო", "NVDA")
+ticker = st.text_input("აქციის სიმბოლო", "NVDA")
 
-if st.button("ანალიზი"):
+if st.button("🔍 ანალიზი"):
+
     data = yf.download(ticker, period="1y")
 
     if data.empty:
         st.error("აქცია ვერ მოიძებნა")
+
     else:
         close = data["Close"].squeeze()
-        price = close.iloc[-1]
-
-        st.write("აქცია:", ticker)
-        st.write("ბოლო ფასი:", float(price))
+        price = float(close.iloc[-1])
 
         score = 0
         reasons = []
@@ -43,16 +48,14 @@ if st.button("ანალიზი"):
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
 
-        current_rsi = rsi.iloc[-1]
-
-        st.write("RSI:", round(float(current_rsi), 2))
+        current_rsi = float(rsi.iloc[-1])
 
         if current_rsi < 30:
             score += 1
-            reasons.append("✅ RSI დაბალია — შესაძლო აღდგენა")
+            reasons.append("✅ RSI დაბალია")
         elif current_rsi > 70:
             score -= 1
-            reasons.append("⚠️ RSI მაღალია — შესაძლებელია გადახურება")
+            reasons.append("⚠️ RSI მაღალია")
         else:
             reasons.append("ℹ️ RSI ნეიტრალურია")
 
@@ -70,45 +73,41 @@ if st.button("ანალიზი"):
             score -= 1
             reasons.append("⚠️ MACD სუსტია")
 
-        # საბოლოო შეფასება
-        st.subheader("🤖 საბოლოო შეფასება")
+        # Dashboard
+        st.divider()
 
-        if score >= 2:
-            st.success("🟢 BUY")
-        elif score <= -2:
-            st.error("🔴 SELL")
-        else:
-            st.warning("🟡 HOLD")
+        col1, col2, col3 = st.columns(3)
 
+        with col1:
+            st.metric("💰 ბოლო ფასი", f"${price:.2f}")
+
+        with col2:
+            if score >= 2:
+                signal_text = "BUY 🟢"
+            elif score <= -2:
+                signal_text = "SELL 🔴"
+            else:
+                signal_text = "HOLD 🟡"
+
+            st.metric("სიგნალი", signal_text)
+
+        with col3:
+            confidence = ((score + 3) / 6) * 100
+            st.metric("AI Confidence", f"{confidence:.1f}%")
+
+        st.divider()
+
+        st.subheader("📊 ინდიკატორები")
+        st.write("RSI:", round(current_rsi, 2))
         st.write("ქულა:", score, "/ 3")
 
-        # Confidence
-        confidence = ((score + 3) / 6) * 100
+        st.subheader("🧠 ანალიზის მიზეზები")
 
-        st.subheader("🎯 AI Confidence")
-        st.write("ნდობის დონე:", round(confidence, 1), "%")
-
-        st.write("ანალიზის მიზეზები:")
         for reason in reasons:
             st.write(reason)
 
-        # ისტორიული ზრდის შანსი
-        st.subheader("📅 ისტორიული მიმართულება")
+        st.subheader("📈 ფასის მოძრაობა")
 
-        returns = close.pct_change().dropna()
-
-        up_days = (returns > 0).sum()
-        total_days = len(returns)
-
-        up_probability = (up_days / total_days) * 100
-
-        st.write("📈 ზრდის ისტორიული შანსი:",
-                 round(up_probability, 2), "%")
-
-        st.write("📉 ვარდნის ისტორიული შანსი:",
-                 round(100 - up_probability, 2), "%")
-
-        # გრაფიკი
         chart = close.to_frame(name="Close")
         chart["MA20"] = close.rolling(20).mean()
         chart["MA50"] = close.rolling(50).mean()
