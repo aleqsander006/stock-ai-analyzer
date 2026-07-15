@@ -8,20 +8,21 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📈 Stock AI Analyzer v2")
+st.title("📈 Stock AI Analyzer")
 
 stocks = st.text_input(
-    "Watchlist (მაგ: NVDA,AAPL,MSFT,TSLA)",
+    "ჩაწერე აქციები (მაგ: NVDA,AAPL,MSFT)",
     "NVDA,AAPL,MSFT"
 )
 
-if st.button("🔍 სრული ანალიზი"):
+if st.button("🔍 ანალიზი"):
 
     tickers = [x.strip().upper() for x in stocks.split(",")]
 
     results = []
+    details = {}
 
-    best_stock = ""
+    best_stock = None
     best_score = -99
 
     for ticker in tickers:
@@ -35,13 +36,8 @@ if st.button("🔍 სრული ანალიზი"):
 
         price = float(close.iloc[-1])
 
-        # დღიური ცვლილება
-        daily_change = (
-            (close.iloc[-1] - close.iloc[-2])
-            / close.iloc[-2]
-        ) * 100
-
         score = 0
+        reasons = []
 
         # MA
         ma20 = close.rolling(20).mean().iloc[-1]
@@ -49,6 +45,9 @@ if st.button("🔍 სრული ანალიზი"):
 
         if ma20 > ma50:
             score += 1
+            reasons.append("ტენდენცია დადებითია")
+        else:
+            reasons.append("ტენდენცია სუსტია")
 
         # RSI
         delta = close.diff()
@@ -66,8 +65,12 @@ if st.button("🔍 სრული ანალიზი"):
 
         if current_rsi < 30:
             score += 1
+            reasons.append("RSI დაბალია")
         elif current_rsi > 70:
             score -= 1
+            reasons.append("RSI მაღალია")
+        else:
+            reasons.append("RSI ნეიტრალურია")
 
         # MACD
         ema12 = close.ewm(span=12).mean()
@@ -78,25 +81,28 @@ if st.button("🔍 სრული ანალიზი"):
 
         if macd.iloc[-1] > signal.iloc[-1]:
             score += 1
+            reasons.append("MACD დადებითია")
+        else:
+            reasons.append("MACD სუსტია")
 
         if score >= 2:
-            signal_text = "🟢 BUY"
-        elif score <= -2:
-            signal_text = "🔴 SELL"
+            result = "🟢 BUY"
+        elif score <= -1:
+            result = "🔴 SELL"
         else:
-            signal_text = "🟡 HOLD"
+            result = "🟡 HOLD"
 
         confidence = ((score + 3) / 6) * 100
 
         results.append({
             "აქცია": ticker,
             "ფასი": round(price, 2),
-            "დღე %": round(daily_change, 2),
-            "RSI": round(current_rsi, 2),
-            "სიგნალი": signal_text,
+            "სიგნალი": result,
             "ქულა": f"{score}/3",
             "Confidence": f"{confidence:.1f}%"
         })
+
+        details[ticker] = reasons
 
         if score > best_score:
             best_score = score
@@ -109,13 +115,33 @@ if st.button("🔍 სრული ანალიზი"):
     st.dataframe(df, use_container_width=True)
 
 
-    st.subheader("🏆 საუკეთესო არჩევანი")
+    st.divider()
+
+    st.subheader("🤖 AI რეკომენდაცია")
 
     if best_stock:
-        st.success(
-            f"საუკეთესო ამ სიიდან: {best_stock} "
-            f"(ქულა {best_score}/3)"
-        )
+
+        if best_score >= 2:
+            st.success(
+                f"{best_stock} გამოიყურება ყველაზე ძლიერად 🟢"
+            )
+        elif best_score <= 0:
+            st.warning(
+                f"{best_stock}-ს სჭირდება დაკვირვება 🟡"
+            )
+        else:
+            st.info(
+                f"{best_stock} ნეიტრალურ მდგომარეობაშია"
+            )
+
+        st.write("მიზეზები:")
+
+        for reason in details[best_stock]:
+            st.write("•", reason)
+
+    st.warning(
+        "⚠️ ეს არის ტექნიკური ანალიზი და არა გარანტირებული ფინანსური რჩევა."
+    )
 
 
     selected = st.selectbox(
@@ -131,17 +157,10 @@ if st.button("🔍 სრული ანალიზი"):
 
     if not chart_data.empty:
 
-        chart_close = chart_data["Close"].squeeze()
+        close = chart_data["Close"].squeeze()
 
-        chart = chart_close.to_frame(
-            name="Close"
+        chart = close.to_frame(
+            name="ფასი"
         )
 
-        chart["MA20"] = chart_close.rolling(20).mean()
-        chart["MA50"] = chart_close.rolling(50).mean()
-
-        st.subheader(
-            f"📈 {selected} გრაფიკი"
-        )
-
-        st.line_chart(chart)
+        chart["MA20
