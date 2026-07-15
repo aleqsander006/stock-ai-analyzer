@@ -10,10 +10,23 @@ st.set_page_config(
 
 st.title("📈 Stock AI Analyzer")
 
+# ---------------- WATCHLIST ----------------
+
 stocks = st.text_input(
     "აქციები (მაგ: NVDA,AAPL,MSFT)",
     "NVDA,AAPL,MSFT"
 )
+
+
+# ---------------- PORTFOLIO ----------------
+
+st.sidebar.header("💼 ჩემი პორტფელი")
+
+portfolio_input = st.sidebar.text_input(
+    "აქციები და რაოდენობა (მაგ: NVDA:10,AAPL:5)",
+    "NVDA:10,AAPL:5"
+)
+
 
 if st.button("🔍 სრული ანალიზი"):
 
@@ -25,9 +38,13 @@ if st.button("🔍 სრული ანალიზი"):
     best_stock = ""
     best_score = -99
 
+
     for ticker in tickers:
 
-        data = yf.download(ticker, period="1y")
+        data = yf.download(
+            ticker,
+            period="1y"
+        )
 
         if data.empty:
             continue
@@ -39,7 +56,9 @@ if st.button("🔍 სრული ანალიზი"):
         score = 0
         reasons = []
 
-        # MA20 / MA50
+
+        # MA
+
         ma20 = close.rolling(20).mean().iloc[-1]
         ma50 = close.rolling(50).mean().iloc[-1]
 
@@ -51,6 +70,7 @@ if st.button("🔍 სრული ანალიზი"):
 
 
         # RSI
+
         delta = close.diff()
 
         gain = delta.clip(lower=0)
@@ -60,9 +80,11 @@ if st.button("🔍 სრული ანალიზი"):
         avg_loss = loss.rolling(14).mean()
 
         rs = avg_gain / avg_loss
+
         rsi = 100 - (100 / (1 + rs))
 
         current_rsi = float(rsi.iloc[-1])
+
 
         if current_rsi < 30:
             score += 1
@@ -75,11 +97,13 @@ if st.button("🔍 სრული ანალიზი"):
 
 
         # MACD
+
         ema12 = close.ewm(span=12).mean()
         ema26 = close.ewm(span=26).mean()
 
         macd = ema12 - ema26
         signal = macd.ewm(span=9).mean()
+
 
         if macd.iloc[-1] > signal.iloc[-1]:
             score += 1
@@ -88,31 +112,30 @@ if st.button("🔍 სრული ანალიზი"):
             reasons.append("⚠️ MACD სუსტია")
 
 
-        # Signal
         if score >= 2:
-            result = "🟢 BUY"
+            signal_text = "🟢 BUY"
         elif score <= -1:
-            result = "🔴 SELL"
+            signal_text = "🔴 SELL"
         else:
-            result = "🟡 HOLD"
+            signal_text = "🟡 HOLD"
 
 
         confidence = ((score + 3) / 6) * 100
 
 
-        # Historical tomorrow probability
         returns = close.pct_change().dropna()
 
-        up_days = (returns > 0).sum()
-        total_days = len(returns)
-
-        up_probability = (up_days / total_days) * 100
+        up_probability = (
+            (returns > 0).sum()
+            /
+            len(returns)
+        ) * 100
 
 
         results.append({
             "აქცია": ticker,
-            "ფასი": round(price, 2),
-            "სიგნალი": result,
+            "ფასი": round(price,2),
+            "სიგნალი": signal_text,
             "ქულა": f"{score}/3",
             "Confidence": f"{confidence:.1f}%",
             "ხვალ ზრდის შანსი": f"{up_probability:.1f}%"
@@ -127,50 +150,101 @@ if st.button("🔍 სრული ანალიზი"):
             best_stock = ticker
 
 
-    # Table
+
+    # TABLE
+
     df = pd.DataFrame(results)
 
     st.subheader("📊 აქციების შედარება")
-    st.dataframe(df, use_container_width=True)
+
+    st.dataframe(
+        df,
+        use_container_width=True
+    )
+
 
 
     # AI Recommendation
+
     st.divider()
 
     st.subheader("🤖 AI რეკომენდაცია")
 
+
     if best_stock:
 
-        if best_score >= 2:
-            st.success(
-                f"{best_stock} გამოიყურება ყველაზე ძლიერად 🟢"
+        st.success(
+            f"საუკეთესო არჩევანი: {best_stock}"
+        )
+
+        for r in details[best_stock]:
+            st.write(r)
+
+
+
+    # PORTFOLIO
+
+    st.divider()
+
+    st.subheader("💼 ჩემი პორტფელი")
+
+
+    total_value = 0
+
+
+    items = portfolio_input.split(",")
+
+
+    for item in items:
+
+        try:
+
+            symbol, amount = item.split(":")
+
+            symbol = symbol.strip().upper()
+
+            amount = int(amount)
+
+
+            data = yf.download(
+                symbol,
+                period="1d"
             )
-        elif best_score <= 0:
-            st.warning(
-                f"{best_stock}-ს სჭირდება დაკვირვება 🟡"
-            )
-        else:
-            st.info(
-                f"{best_stock} ნეიტრალურ მდგომარეობაშია"
-            )
 
 
-        st.write("მიზეზები:")
+            if not data.empty:
 
-        for reason in details[best_stock]:
-            st.write(reason)
+                price = float(
+                    data["Close"].iloc[-1]
+                )
+
+                value = price * amount
+
+                total_value += value
 
 
-    st.warning(
-        "⚠️ ეს არის ტექნიკური ანალიზი და არა ფინანსური გარანტია."
+                st.write(
+                    f"{symbol}: {amount} აქცია × ${price:.2f} = ${value:.2f}"
+                )
+
+        except:
+            pass
+
+
+
+    st.metric(
+        "საერთო პორტფელის ღირებულება",
+        f"${total_value:,.2f}"
     )
 
 
-    # Chart
+
+    # CHART
+
     st.divider()
 
     selected = st.selectbox(
-        "აირჩიე გრაფიკისთვის",
+        "გრაფიკის აქცია",
         tickers
     )
 
@@ -194,7 +268,7 @@ if st.button("🔍 სრული ანალიზი"):
 
 
         st.subheader(
-            f"📈 {selected} - 1 წლის გრაფიკი"
+            f"📈 {selected} გრაფიკი"
         )
 
         st.line_chart(chart)
