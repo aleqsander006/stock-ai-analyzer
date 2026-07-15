@@ -27,4 +27,9 @@ if st.button("ანალიზი"):
         else:
             st.warning("🟡 HOLD")
 
-        st.line_chart(close)
+        chart_data = data.copy()
+
+chart_data["MA20"] = close.rolling(20).mean()
+chart_data["MA50"] = close.rolling(50).mean()
+
+st.line_chart(chart_data[["Close", "MA20", "MA50"]])
