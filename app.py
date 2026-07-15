@@ -25,18 +25,16 @@ if st.button("🔍 ანალიზი"):
         score = 0
         reasons = []
 
-        # MA
         ma20 = close.rolling(20).mean().iloc[-1]
         ma50 = close.rolling(50).mean().iloc[-1]
 
         if ma20 > ma50:
             score += 1
-            reasons.append("✅ ტენდენცია დადებითია")
+            reasons.append("მოკლევადიანი ტენდენცია დადებითია")
         else:
             score -= 1
-            reasons.append("⚠️ ტენდენცია სუსტია")
+            reasons.append("მოკლევადიანი ტენდენცია სუსტია")
 
-        # RSI
         delta = close.diff()
 
         gain = delta.clip(lower=0)
@@ -52,14 +50,13 @@ if st.button("🔍 ანალიზი"):
 
         if current_rsi < 30:
             score += 1
-            reasons.append("✅ RSI დაბალია")
+            reasons.append("RSI მიუთითებს შესაძლო იაფ ფასზე")
         elif current_rsi > 70:
             score -= 1
-            reasons.append("⚠️ RSI მაღალია")
+            reasons.append("RSI მაღალია")
         else:
-            reasons.append("ℹ️ RSI ნეიტრალურია")
+            reasons.append("RSI ნეიტრალურია")
 
-        # MACD
         ema12 = close.ewm(span=12).mean()
         ema26 = close.ewm(span=26).mean()
 
@@ -68,45 +65,45 @@ if st.button("🔍 ანალიზი"):
 
         if macd.iloc[-1] > signal.iloc[-1]:
             score += 1
-            reasons.append("✅ MACD დადებითია")
+            reasons.append("MACD დადებით მოძრაობას აჩვენებს")
         else:
             score -= 1
-            reasons.append("⚠️ MACD სუსტია")
+            reasons.append("MACD სუსტია")
 
-        # Dashboard
-        st.divider()
+        if score >= 2:
+            result = "BUY 🟢"
+            explanation = "ინდიკატორების უმეტესობა დადებით სიგნალს აჩვენებს."
+        elif score <= -2:
+            result = "SELL 🔴"
+            explanation = "რამდენიმე ინდიკატორი სუსტ ტენდენციაზე მიუთითებს."
+        else:
+            result = "HOLD 🟡"
+            explanation = "სიგნალები ერთმანეთში იყოფა და საჭიროა დაკვირვება."
+
+        confidence = ((score + 3) / 6) * 100
 
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.metric("💰 ბოლო ფასი", f"${price:.2f}")
+            st.metric("💰 ფასი", f"${price:.2f}")
 
         with col2:
-            if score >= 2:
-                signal_text = "BUY 🟢"
-            elif score <= -2:
-                signal_text = "SELL 🔴"
-            else:
-                signal_text = "HOLD 🟡"
-
-            st.metric("სიგნალი", signal_text)
+            st.metric("📌 შეფასება", result)
 
         with col3:
-            confidence = ((score + 3) / 6) * 100
-            st.metric("AI Confidence", f"{confidence:.1f}%")
+            st.metric("🎯 Confidence", f"{confidence:.1f}%")
 
         st.divider()
 
-        st.subheader("📊 ინდიკატორები")
-        st.write("RSI:", round(current_rsi, 2))
-        st.write("ქულა:", score, "/ 3")
+        st.subheader("🤖 AI ანალიზი")
+        st.write(explanation)
 
-        st.subheader("🧠 ანალიზის მიზეზები")
+        st.subheader("📋 მიზეზები")
 
-        for reason in reasons:
-            st.write(reason)
+        for r in reasons:
+            st.write("•", r)
 
-        st.subheader("📈 ფასის მოძრაობა")
+        st.subheader("📈 გრაფიკი")
 
         chart = close.to_frame(name="Close")
         chart["MA20"] = close.rolling(20).mean()
