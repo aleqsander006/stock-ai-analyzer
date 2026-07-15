@@ -15,21 +15,19 @@ if st.button("ანალიზი"):
 
         price = close.iloc[-1]
 
-        ma20 = close.rolling(20).mean().iloc[-1]
-        ma50 = close.rolling(50).mean().iloc[-1]
-
         st.write("აქცია:", ticker)
         st.write("ბოლო ფასი:", float(price))
 
-        # BUY / SELL სიგნალი
-        if ma20 > ma50:
-            st.success("🟢 BUY სიგნალი")
-        elif ma20 < ma50:
-            st.error("🔴 SELL სიგნალი")
-        else:
-            st.warning("🟡 HOLD")
+        # MA20 / MA50
+        ma20 = close.rolling(20).mean().iloc[-1]
+        ma50 = close.rolling(50).mean().iloc[-1]
 
-        # RSI გამოთვლა
+        if ma20 > ma50:
+            st.success("🟢 BUY სიგნალი (MA)")
+        else:
+            st.error("🔴 SELL სიგნალი (MA)")
+
+        # RSI
         delta = close.diff()
 
         gain = delta.clip(lower=0)
@@ -45,16 +43,26 @@ if st.button("ანალიზი"):
 
         st.write("RSI:", round(float(current_rsi), 2))
 
-        if current_rsi > 70:
-            st.warning("⚠️ აქცია შეიძლება გადახურებული იყოს")
-        elif current_rsi < 30:
-            st.success("🟢 აქცია შეიძლება იაფად იყიდებოდეს")
+        # MACD
+        ema12 = close.ewm(span=12).mean()
+        ema26 = close.ewm(span=26).mean()
+
+        macd = ema12 - ema26
+        signal = macd.ewm(span=9).mean()
+
+        current_macd = macd.iloc[-1]
+        current_signal = signal.iloc[-1]
+
+        st.write("MACD:", round(float(current_macd), 3))
+
+        if current_macd > current_signal:
+            st.success("🟢 MACD: დადებითი ტენდენცია")
         else:
-            st.info("ℹ️ RSI ნეიტრალურ ზონაშია")
+            st.warning("🟡 MACD: სუსტი ტენდენცია")
 
         # გრაფიკი
         chart_data = close.to_frame(name="Close")
-        chart_data["MA20"] = close.rolling(20).mean()
-        chart_data["MA50"] = close.rolling(50).mean()
+        chart_data["MA20"] = ma20
+        chart_data["MA50"] = ma50
 
         st.line_chart(chart_data)
