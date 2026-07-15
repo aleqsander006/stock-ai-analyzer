@@ -11,19 +11,19 @@ if st.button("ანალიზი"):
     if data.empty:
         st.error("აქცია ვერ მოიძებნა")
     else:
-    price = data["Close"].iloc[-1]
+        price = data["Close"].iloc[-1]
 
-ma20 = data["Close"].rolling(20).mean().iloc[-1]
-ma50 = data["Close"].rolling(50).mean().iloc[-1]
+        ma20 = data["Close"].rolling(20).mean().iloc[-1]
+        ma50 = data["Close"].rolling(50).mean().iloc[-1]
 
-st.write("აქცია:", ticker)
-st.write("ბოლო ფასი:", price)
+        st.write("აქცია:", ticker)
+        st.write("ბოლო ფასი:", price)
 
-if ma20 > ma50:
-    st.success("🟢 BUY სიგნალი")
-elif ma20 < ma50:
-    st.error("🔴 SELL სიგნალი")
-else:
-    st.warning("🟡 HOLD")
+        if ma20 > ma50:
+            st.success("🟢 BUY სიგნალი")
+        elif ma20 < ma50:
+            st.error("🔴 SELL სიგნალი")
+        else:
+            st.warning("🟡 HOLD")
 
-st.line_chart(data["Close"])
+        st.line_chart(data["Close"])
