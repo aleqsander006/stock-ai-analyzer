@@ -18,23 +18,80 @@ if st.button("ანალიზი"):
         st.write("აქცია:", ticker)
         st.write("ბოლო ფასი:", float(price))
 
-        # MA20 / MA50
+        score = 0
+        reasons = []
+
+        # MA
         ma20 = close.rolling(20).mean().iloc[-1]
         ma50 = close.rolling(50).mean().iloc[-1]
 
         if ma20 > ma50:
-            st.success("🟢 BUY სიგნალი (MA)")
+            score += 1
+            reasons.append("✅ მოკლე ტენდენცია დადებითია")
         else:
-            st.error("🔴 SELL სიგნალი (MA)")
+            score -= 1
+            reasons.append("⚠️ მოკლე ტენდენცია სუსტია")
 
         # RSI
         delta = close.diff()
-
         gain = delta.clip(lower=0)
         loss = -delta.clip(upper=0)
 
         avg_gain = gain.rolling(14).mean()
         avg_loss = loss.rolling(14).mean()
+
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+
+        current_rsi = rsi.iloc[-1]
+
+        st.write("RSI:", round(float(current_rsi), 2))
+
+        if current_rsi < 30:
+            score += 1
+            reasons.append("✅ RSI აჩვენებს შესაძლო იაფ ფასს")
+        elif current_rsi > 70:
+            score -= 1
+            reasons.append("⚠️ RSI მაღალია")
+        else:
+            reasons.append("ℹ️ RSI ნეიტრალურია")
+
+        # MACD
+        ema12 = close.ewm(span=12).mean()
+        ema26 = close.ewm(span=26).mean()
+
+        macd = ema12 - ema26
+        signal = macd.ewm(span=9).mean()
+
+        if macd.iloc[-1] > signal.iloc[-1]:
+            score += 1
+            reasons.append("✅ MACD დადებითია")
+        else:
+            score -= 1
+            reasons.append("⚠️ MACD სუსტია")
+
+        # საბოლოო შეფასება
+        st.subheader("🤖 საბოლოო შეფასება")
+
+        if score >= 2:
+            st.success("🟢 BUY")
+        elif score <= -2:
+            st.error("🔴 SELL")
+        else:
+            st.warning("🟡 HOLD")
+
+        st.write("ქულა:", score, "/ 3")
+
+        st.write("მიზეზები:")
+        for r in reasons:
+            st.write(r)
+
+        # გრაფიკი
+        chart = close.to_frame(name="Close")
+        chart["MA20"] = close.rolling(20).mean()
+        chart["MA50"] = close.rolling(50).mean()
+
+        st.line_chart(chart)        avg_loss = loss.rolling(14).mean()
 
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
