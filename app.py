@@ -12,9 +12,10 @@ if st.button("ანალიზი"):
         st.error("აქცია ვერ მოიძებნა")
     else:
         price = data["Close"].iloc[-1]
+close = data["Close"].squeeze()
 
-        ma20 = data["Close"].rolling(20).mean().iloc[-1]
-        ma50 = data["Close"].rolling(50).mean().iloc[-1]
+ma20 = close.rolling(20).mean().iloc[-1]
+ma50 = close.rolling(50).mean().iloc[-1]
 
         st.write("აქცია:", ticker)
         st.write("ბოლო ფასი:", price)
