@@ -17,12 +17,12 @@ st.set_page_config(
 st.title("📈 Stock AI Analyzer Pro")
 
 
-# ---------------- SIDEBAR PORTFOLIO ----------------
+# ---------------- PORTFOLIO ----------------
 
 st.sidebar.header("💼 ჩემი პორტფელი")
 
 portfolio_input = st.sidebar.text_input(
-    "მაგ: NVDA:0.02,AAPL:1.5",
+    "მაგ: NVDA:0.02,AAPL:1",
     "NVDA:0.02,AAPL:1"
 )
 
@@ -37,19 +37,18 @@ if st.sidebar.button("პორტფელის ნახვა"):
 
     for item in positions:
         st.sidebar.write(
-            f"{item['Symbol']}: "
+            f"{item['Symbol']} - "
             f"{item['Shares']} აქცია = "
             f"${item['Value']}"
         )
 
     st.sidebar.metric(
-        "საერთო ღირებულება",
+        "სულ ღირებულება",
         f"${total:.2f}"
     )
 
 
-# ---------------- STOCK SEARCH ----------------
-
+# ---------------- STOCK ANALYSIS ----------------
 
 ticker = st.text_input(
     "შეიყვანე აქციის სიმბოლო",
@@ -57,12 +56,9 @@ ticker = st.text_input(
 )
 
 
-analyze = st.button(
-    "🔍 ანალიზი"
-)
+if st.button("🔍 ანალიზი"):
 
-
-if analyze:
+    ticker = ticker.upper().strip()
 
     data = yf.download(
         ticker,
@@ -79,7 +75,12 @@ if analyze:
 
     else:
 
-        close = data["Close"].squeeze()
+        close = data["Close"]
+
+        # yfinance-ის ახალი ფორმატის დაცვა
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
+
 
         price = float(
             close.iloc[-1]
@@ -87,11 +88,90 @@ if analyze:
 
 
         st.subheader(
-            f"🏢 {ticker.upper()}"
+            f"🏢 {ticker}"
         )
 
 
         st.metric(
             "მიმდინარე ფასი",
             f"${price:.2f}"
+        )
+
+
+        # Indicators
+
+        indicators = calculate_indicators(
+            close
+        )
+
+
+        st.subheader(
+            "📊 ტექნიკური ანალიზი"
+        )
+
+
+        col1, col2, col3 = st.columns(3)
+
+
+        with col1:
+            st.write(
+                "RSI:",
+                round(
+                    float(indicators["RSI"].iloc[-1]),
+                    2
+                )
+            )
+
+
+        with col2:
+            st.write(
+                "MA20:",
+                round(
+                    float(indicators["MA20"].iloc[-1]),
+                    2
+                )
+            )
+
+
+        with col3:
+            st.write(
+                "MA50:",
+                round(
+                    float(indicators["MA50"].iloc[-1]),
+                    2
+                )
+            )
+
+
+        # Company info
+
+        st.subheader(
+            "🏢 კომპანიის ინფორმაცია"
+        )
+
+
+        info = get_fundamentals(
+            ticker
+        )
+
+
+        st.json(info)
+
+
+        # Chart
+
+        st.subheader(
+            "📈 1 წლის გრაფიკი"
+        )
+
+
+        chart = pd.DataFrame()
+
+        chart["ფასი"] = close
+        chart["MA20"] = indicators["MA20"]
+        chart["MA50"] = indicators["MA50"]
+
+
+        st.line_chart(
+            chart
         )
