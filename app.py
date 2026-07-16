@@ -1,39 +1,3 @@
-import streamlit as st
-import yfinance as yf
-import pandas as pd
-
-from indicators import calculate_indicators
-from fundamentals import get_fundamentals
-from portfolio import calculate_portfolio
-
-
-st.set_page_config(
-    page_title="Stock AI Analyzer Pro",
-    page_icon="📈",
-    layout="wide"
-)
-
-
-st.title("📈 Stock AI Analyzer Pro")
-
-
-# ---------------- PORTFOLIO ----------------
-
-st.sidebar.header("💼 ჩემი პორტფელი")
-
-portfolio_input = st.sidebar.text_input(
-    "მაგ: NVDA:0.02,AAPL:1",
-    "NVDA:0.02"
-)
-
-
-if st.sidebar.button("პორტფელის ნახვა"):
-
-    total, positions = calculate_portfolio(
-        portfolio_input
-    )
-
-    for p in positions:
         st.sidebar.write(
             f"{p['Symbol']} - {p['Shares']} აქცია"
         )
