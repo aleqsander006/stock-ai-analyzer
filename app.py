@@ -1,14 +1,56 @@
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+
+from indicators import calculate_indicators
+from fundamentals import get_fundamentals
+from portfolio import calculate_portfolio
+from ai_score import calculate_score
+
+
+st.set_page_config(
+    page_title="Stock AI Analyzer Pro",
+    page_icon="📈",
+    layout="wide"
+)
+
+
+st.title("📈 Stock AI Analyzer Pro")
+
+
+# =====================
+# PORTFOLIO
+# =====================
+
+st.sidebar.header("💼 ჩემი პორტფელი")
+
+portfolio_input = st.sidebar.text_input(
+    "მაგ: NVDA:0.02,AAPL:1",
+    "NVDA:0.02"
+)
+
+
+if st.sidebar.button("პორტფელის ნახვა"):
+
+    total, positions = calculate_portfolio(
+        portfolio_input
+    )
+
+    for p in positions:
         st.sidebar.write(
             f"{p['Symbol']} - {p['Shares']} აქცია"
         )
 
     st.sidebar.metric(
-        "ღირებულება",
+        "სულ ღირებულება",
         f"${total:.2f}"
     )
 
 
-# ---------------- MODE ----------------
+
+# =====================
+# MODE
+# =====================
 
 mode = st.radio(
     "რეჟიმი",
@@ -31,16 +73,17 @@ tickers = [
 ]
 
 
-# ---------------- SINGLE ----------------
+
+# =====================
+# SINGLE STOCK
+# =====================
 
 if mode == "📈 ერთი აქცია":
-
 
     ticker = tickers[0]
 
 
     if st.button("ანალიზი"):
-
 
         data = yf.download(
             ticker,
@@ -55,13 +98,12 @@ if mode == "📈 ერთი აქცია":
                 "აქცია ვერ მოიძებნა"
             )
 
-
         else:
 
             close = data["Close"]
 
             if isinstance(close, pd.DataFrame):
-                close = close.iloc[:,0]
+                close = close.iloc[:, 0]
 
 
             price = float(
@@ -85,26 +127,54 @@ if mode == "📈 ერთი აქცია":
             )
 
 
-            c1,c2,c3 = st.columns(3)
+            col1, col2, col3 = st.columns(3)
 
 
-            c1.metric(
+            col1.metric(
                 "RSI",
-                round(float(indicators["RSI"].iloc[-1]),2)
+                round(float(indicators["RSI"].iloc[-1]), 2)
             )
 
 
-            c2.metric(
+            col2.metric(
                 "MA20",
-                round(float(indicators["MA20"].iloc[-1]),2)
+                round(float(indicators["MA20"].iloc[-1]), 2)
             )
 
 
-            c3.metric(
+            col3.metric(
                 "MA50",
-                round(float(indicators["MA50"].iloc[-1]),2)
+                round(float(indicators["MA50"].iloc[-1]), 2)
             )
 
+
+
+            # AI SCORE
+
+            score, signal = calculate_score(
+                close,
+                indicators
+            )
+
+
+            st.subheader(
+                "⭐ AI Score"
+            )
+
+
+            st.metric(
+                "ქულა",
+                f"{score}/100"
+            )
+
+
+            st.write(
+                signal
+            )
+
+
+
+            # INFO
 
             st.subheader(
                 "🏢 ინფორმაცია"
@@ -115,6 +185,9 @@ if mode == "📈 ერთი აქცია":
                 get_fundamentals(ticker)
             )
 
+
+
+            # CHART
 
             chart = pd.DataFrame()
 
@@ -127,12 +200,16 @@ if mode == "📈 ერთი აქცია":
                 "📈 გრაფიკი"
             )
 
-            st.line_chart(chart)
+
+            st.line_chart(
+                chart
+            )
 
 
 
-# ---------------- COMPARE ----------------
-
+# =====================
+# COMPARE STOCKS
+# =====================
 
 else:
 
@@ -141,6 +218,8 @@ else:
 
 
         chart = pd.DataFrame()
+
+        scores = []
 
 
         for ticker in tickers:
@@ -160,7 +239,7 @@ else:
 
 
                 if isinstance(close, pd.DataFrame):
-                    close = close.iloc[:,0]
+                    close = close.iloc[:, 0]
 
 
                 normalized = (
@@ -169,6 +248,27 @@ else:
 
 
                 chart[ticker] = normalized
+
+
+
+                indicators = calculate_indicators(
+                    close
+                )
+
+
+                score, signal = calculate_score(
+                    close,
+                    indicators
+                )
+
+
+                scores.append(
+                    {
+                        "აქცია": ticker,
+                        "AI Score": score,
+                        "სიგნალი": signal
+                    }
+                )
 
 
 
@@ -182,4 +282,34 @@ else:
 
             st.line_chart(
                 chart
+            )
+
+
+
+            st.subheader(
+                "⭐ AI რეიტინგი"
+            )
+
+
+            result = pd.DataFrame(
+                scores
+            )
+
+
+            result = result.sort_values(
+                "AI Score",
+                ascending=False
+            )
+
+
+            st.dataframe(
+                result
+            )
+
+
+            best = result.iloc[0]
+
+
+            st.success(
+                f"🏆 საუკეთესო: {best['აქცია']} - {best['AI Score']}/100"
             )
