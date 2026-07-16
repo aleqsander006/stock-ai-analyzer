@@ -17,13 +17,13 @@ st.set_page_config(
 st.title("📈 Stock AI Analyzer Pro")
 
 
-# ---------------- PORTFOLIO ----------------
+# SIDEBAR PORTFOLIO
 
 st.sidebar.header("💼 ჩემი პორტფელი")
 
 portfolio_input = st.sidebar.text_input(
     "მაგ: NVDA:0.02,AAPL:1",
-    "NVDA:0.02,AAPL:1"
+    "NVDA:0.02"
 )
 
 
@@ -33,13 +33,9 @@ if st.sidebar.button("პორტფელის ნახვა"):
         portfolio_input
     )
 
-    st.sidebar.subheader("შედეგი")
-
-    for item in positions:
+    for p in positions:
         st.sidebar.write(
-            f"{item['Symbol']} - "
-            f"{item['Shares']} აქცია = "
-            f"${item['Value']}"
+            f"{p['Symbol']} - {p['Shares']} აქცია"
         )
 
     st.sidebar.metric(
@@ -48,130 +44,191 @@ if st.sidebar.button("პორტფელის ნახვა"):
     )
 
 
-# ---------------- STOCK ANALYSIS ----------------
+# MODE
 
-ticker = st.text_input(
-    "შეიყვანე აქციის სიმბოლო",
+mode = st.radio(
+    "აირჩიე რეჟიმი",
+    [
+        "📈 ერთი აქციის ანალიზი",
+        "📊 აქციების შედარება"
+    ]
+)
+
+
+tickers_input = st.text_input(
+    "შეიყვანე აქციები (მაგ: NVDA,SNDK,MSFT)",
     "NVDA"
 )
 
 
-if st.button("🔍 ანალიზი"):
-
-    ticker = ticker.upper().strip()
-
-    data = yf.download(
-        ticker,
-        period="1y",
-        progress=False
-    )
+tickers = [
+    x.strip().upper()
+    for x in tickers_input.split(",")
+]
 
 
-    if data.empty:
+# SINGLE STOCK
 
-        st.error(
-            "აქცია ვერ მოიძებნა"
-        )
+if mode == "📈 ერთი აქციის ანალიზი":
 
-    else:
+    ticker = tickers[0]
 
-        close = data["Close"]
+    if st.button("🔍 ანალიზი"):
 
-        # yfinance-ის ახალი ფორმატის დაცვა
-        if isinstance(close, pd.DataFrame):
-            close = close.iloc[:, 0]
-
-
-        price = float(
-            close.iloc[-1]
+        data = yf.download(
+            ticker,
+            period="1y",
+            progress=False
         )
 
 
-        st.subheader(
-            f"🏢 {ticker}"
-        )
+        if not data.empty:
+
+            close = data["Close"]
+
+            if isinstance(close, pd.DataFrame):
+                close = close.iloc[:,0]
 
 
-        st.metric(
-            "მიმდინარე ფასი",
-            f"${price:.2f}"
-        )
-
-
-        # Indicators
-
-        indicators = calculate_indicators(
-            close
-        )
-
-
-        st.subheader(
-            "📊 ტექნიკური ანალიზი"
-        )
-
-
-        col1, col2, col3 = st.columns(3)
-
-
-        with col1:
-            st.write(
-                "RSI:",
-                round(
-                    float(indicators["RSI"].iloc[-1]),
-                    2
-                )
+            price = float(
+                close.iloc[-1]
             )
 
 
-        with col2:
-            st.write(
-                "MA20:",
-                round(
-                    float(indicators["MA20"].iloc[-1]),
-                    2
-                )
+            st.subheader(
+                f"🏢 {ticker}"
             )
 
 
-        with col3:
-            st.write(
-                "MA50:",
-                round(
-                    float(indicators["MA50"].iloc[-1]),
-                    2
-                )
+            st.metric(
+                "მიმდინარე ფასი",
+                f"${price:.2f}"
             )
 
 
-        # Company info
-
-        st.subheader(
-            "🏢 კომპანიის ინფორმაცია"
-        )
+            indicators = calculate_indicators(
+                close
+            )
 
 
-        info = get_fundamentals(
-            ticker
-        )
+            col1,col2,col3 = st.columns(3)
 
 
-        st.json(info)
+            col1.metric(
+                "RSI",
+                round(float(indicators["RSI"].iloc[-1]),2)
+            )
+
+            col2.metric(
+                "MA20",
+                round(float(indicators["MA20"].iloc[-1]),2)
+            )
+
+            col3.metric(
+                "MA50",
+                round(float(indicators["MA50"].iloc[-1]),2)
+            )
+                        # COMPANY INFO
+
+            st.subheader(
+                "🏢 კომპანიის ინფორმაცია"
+            )
+
+            info = get_fundamentals(
+                ticker
+            )
+
+            st.json(info)
 
 
-        # Chart
+            # CHART
 
-        st.subheader(
-            "📈 1 წლის გრაფიკი"
-        )
-
-
-        chart = pd.DataFrame()
-
-        chart["ფასი"] = close
-        chart["MA20"] = indicators["MA20"]
-        chart["MA50"] = indicators["MA50"]
+            st.subheader(
+                "📈 1 წლის გრაფიკი"
+            )
 
 
-        st.line_chart(
-            chart
-        )
+            chart = pd.DataFrame()
+
+            chart["ფასი"] = close
+            chart["MA20"] = indicators["MA20"]
+            chart["MA50"] = indicators["MA50"]
+
+
+            st.line_chart(
+                chart
+            )
+
+
+
+# COMPARE MODE
+
+else:
+
+    if st.button("📊 შედარება"):
+
+        comparison = pd.DataFrame()
+
+
+        for ticker in tickers:
+
+            data = yf.download(
+                ticker,
+                period="1y",
+                progress=False
+            )
+
+
+            if not data.empty:
+
+                close = data["Close"]
+
+
+                if isinstance(close, pd.DataFrame):
+                    close = close.iloc[:,0]
+
+
+                # პროცენტული ცვლილება
+                normalized = (
+                    close / close.iloc[0]
+                ) * 100
+
+
+                comparison[ticker] = normalized
+
+
+
+        if not comparison.empty:
+
+            st.subheader(
+                "📊 აქციების შედარება (1 წელი)"
+            )
+
+
+            st.line_chart(
+                comparison
+            )
+
+
+            st.subheader(
+                "📈 ბოლო შედეგები"
+            )
+
+
+            results = pd.DataFrame()
+
+
+            for col in comparison.columns:
+
+                start = comparison[col].iloc[0]
+                end = comparison[col].iloc[-1]
+
+                results.loc[col,"ცვლილება %"] = round(
+                    end-start,
+                    2
+                )
+
+
+            st.dataframe(
+                results
+                )
