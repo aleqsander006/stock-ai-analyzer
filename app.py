@@ -17,7 +17,7 @@ st.set_page_config(
 st.title("📈 Stock AI Analyzer Pro")
 
 
-# SIDEBAR PORTFOLIO
+# ---------------- PORTFOLIO ----------------
 
 st.sidebar.header("💼 ჩემი პორტფელი")
 
@@ -39,41 +39,44 @@ if st.sidebar.button("პორტფელის ნახვა"):
         )
 
     st.sidebar.metric(
-        "სულ ღირებულება",
+        "ღირებულება",
         f"${total:.2f}"
     )
 
 
-# MODE
+# ---------------- MODE ----------------
 
 mode = st.radio(
-    "აირჩიე რეჟიმი",
+    "რეჟიმი",
     [
-        "📈 ერთი აქციის ანალიზი",
-        "📊 აქციების შედარება"
+        "📈 ერთი აქცია",
+        "📊 შედარება"
     ]
 )
 
 
-tickers_input = st.text_input(
-    "შეიყვანე აქციები (მაგ: NVDA,SNDK,MSFT)",
+tickers_text = st.text_input(
+    "აქციები (მაგ: NVDA,SNDK,MSFT)",
     "NVDA"
 )
 
 
 tickers = [
     x.strip().upper()
-    for x in tickers_input.split(",")
+    for x in tickers_text.split(",")
 ]
 
 
-# SINGLE STOCK
+# ---------------- SINGLE ----------------
 
-if mode == "📈 ერთი აქციის ანალიზი":
+if mode == "📈 ერთი აქცია":
+
 
     ticker = tickers[0]
 
-    if st.button("🔍 ანალიზი"):
+
+    if st.button("ანალიზი"):
+
 
         data = yf.download(
             ticker,
@@ -82,7 +85,14 @@ if mode == "📈 ერთი აქციის ანალიზი":
         )
 
 
-        if not data.empty:
+        if data.empty:
+
+            st.error(
+                "აქცია ვერ მოიძებნა"
+            )
+
+
+        else:
 
             close = data["Close"]
 
@@ -101,7 +111,7 @@ if mode == "📈 ერთი აქციის ანალიზი":
 
 
             st.metric(
-                "მიმდინარე ფასი",
+                "ფასი",
                 f"${price:.2f}"
             )
 
@@ -111,66 +121,66 @@ if mode == "📈 ერთი აქციის ანალიზი":
             )
 
 
-            col1,col2,col3 = st.columns(3)
+            c1,c2,c3 = st.columns(3)
 
 
-            col1.metric(
+            c1.metric(
                 "RSI",
                 round(float(indicators["RSI"].iloc[-1]),2)
             )
 
-            col2.metric(
+
+            c2.metric(
                 "MA20",
                 round(float(indicators["MA20"].iloc[-1]),2)
             )
 
-            col3.metric(
+
+            c3.metric(
                 "MA50",
                 round(float(indicators["MA50"].iloc[-1]),2)
             )
-                        # COMPANY INFO
+
 
             st.subheader(
-                "🏢 კომპანიის ინფორმაცია"
+                "🏢 ინფორმაცია"
             )
 
-            info = get_fundamentals(
-                ticker
-            )
 
-            st.json(info)
-
-
-            # CHART
-
-            st.subheader(
-                "📈 1 წლის გრაფიკი"
+            st.json(
+                get_fundamentals(ticker)
             )
 
 
             chart = pd.DataFrame()
 
-            chart["ფასი"] = close
+            chart["Price"] = close
             chart["MA20"] = indicators["MA20"]
             chart["MA50"] = indicators["MA50"]
 
 
-            st.line_chart(
-                chart
+            st.subheader(
+                "📈 გრაფიკი"
             )
 
+            st.line_chart(chart)
 
 
-# COMPARE MODE
+
+# ---------------- COMPARE ----------------
+
 
 else:
 
-    if st.button("📊 შედარება"):
 
-        comparison = pd.DataFrame()
+    if st.button("შედარება"):
+
+
+        chart = pd.DataFrame()
 
 
         for ticker in tickers:
+
 
             data = yf.download(
                 ticker,
@@ -181,6 +191,7 @@ else:
 
             if not data.empty:
 
+
                 close = data["Close"]
 
 
@@ -188,47 +199,23 @@ else:
                     close = close.iloc[:,0]
 
 
-                # პროცენტული ცვლილება
                 normalized = (
                     close / close.iloc[0]
                 ) * 100
 
 
-                comparison[ticker] = normalized
+                chart[ticker] = normalized
 
 
 
-        if not comparison.empty:
+        if not chart.empty:
+
 
             st.subheader(
-                "📊 აქციების შედარება (1 წელი)"
+                "📊 1 წლის შედარება"
             )
 
 
             st.line_chart(
-                comparison
+                chart
             )
-
-
-            st.subheader(
-                "📈 ბოლო შედეგები"
-            )
-
-
-            results = pd.DataFrame()
-
-
-            for col in comparison.columns:
-
-                start = comparison[col].iloc[0]
-                end = comparison[col].iloc[-1]
-
-                results.loc[col,"ცვლილება %"] = round(
-                    end-start,
-                    2
-                )
-
-
-            st.dataframe(
-                results
-                )
