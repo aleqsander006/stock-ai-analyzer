@@ -1,17 +1,17 @@
 import yfinance as yf
+import streamlit as st
 
 
+@st.cache_data(ttl=3600)
 def get_fundamentals(ticker):
 
     try:
-
         stock = yf.Ticker(ticker)
 
-        info = stock.info
-
+        info = stock.get_info()
 
         return {
-            "Company": info.get("longName", "N/A"),
+            "Company": info.get("longName", ticker),
             "Sector": info.get("sector", "N/A"),
             "Industry": info.get("industry", "N/A"),
             "Country": info.get("country", "N/A"),
@@ -22,17 +22,17 @@ def get_fundamentals(ticker):
             "Employees": info.get("fullTimeEmployees", "N/A")
         }
 
-
-    except Exception:
+    except Exception as e:
 
         return {
             "Company": ticker,
-            "Sector": "Unavailable",
-            "Industry": "Unavailable",
-            "Country": "Unavailable",
-            "Market Cap": "Unavailable",
-            "P/E Ratio": "Unavailable",
-            "EPS": "Unavailable",
-            "Dividend Yield": "Unavailable",
-            "Employees": "Unavailable"
+            "Sector": "N/A",
+            "Industry": "N/A",
+            "Country": "N/A",
+            "Market Cap": "N/A",
+            "P/E Ratio": "N/A",
+            "EPS": "N/A",
+            "Dividend Yield": "N/A",
+            "Employees": "N/A",
+            "Error": "Yahoo Finance limit reached"
         }
