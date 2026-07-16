@@ -2,13 +2,10 @@ def calculate_score(close, indicators):
 
     score = 50
 
+    price = float(close.iloc[-1])
 
     rsi = float(
         indicators["RSI"].iloc[-1]
-    )
-
-    price = float(
-        close.iloc[-1]
     )
 
     ma20 = float(
@@ -20,32 +17,29 @@ def calculate_score(close, indicators):
     )
 
 
-    # RSI
+    # RSI შეფასება
     if 40 <= rsi <= 70:
         score += 15
-
     elif rsi < 30:
-        score += 5
-
+        score += 10
     elif rsi > 80:
         score -= 10
 
 
-    # MA20
+    # MA20 ტრენდი
     if price > ma20:
         score += 15
     else:
         score -= 10
 
 
-    # MA50
+    # MA50 ტრენდი
     if price > ma50:
         score += 15
     else:
         score -= 10
 
 
-    # Limit
     score = max(0, min(100, score))
 
 
